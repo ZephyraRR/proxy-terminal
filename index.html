@@ -14,6 +14,20 @@
         <div class="right-pane">
             <div class="chat-header">
                 <h2>Chats</h2>
+                <div class="chat-settings">
+                    <input type="password" id="api-key-input" placeholder="API Key" class="input input-sm" />
+                    <select id="proxy-country-select" class="input input-sm">
+                        <option value="">Select Proxy Country</option>
+                        <option value="United States">United States</option>
+                        <option value="United Kingdom">United Kingdom</option>
+                        <option value="Canada">Canada</option>
+                        <option value="Germany">Germany</option>
+                        <option value="France">France</option>
+                        <option value="Japan">Japan</option>
+                        <option value="Australia">Australia</option>
+                    </select>
+                    <button id="save-settings-btn" class="btn btn-sm">Save Settings</button>
+                </div>
                 <button id="new-chat-btn" class="btn btn-primary">New Chat</button>
             </div>
             <div class="chat-sidebar">

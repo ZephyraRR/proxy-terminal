@@ -226,3 +226,64 @@ body:not(.dark) {
     background-color: #fff;
     color: #000;
 }
+
+/* Done state styling */
+.chat-sidebar .chat-item.done .chat-name {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+.chat-sidebar .chat-item.done label {
+    opacity: 0.4;
+}
+.chat-sidebar .chat-item label {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+.chat-sidebar .chat-item label input {
+    margin-right: 0.25rem;
+}
+.chat-controls {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+.trash-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.2rem;
+    border-radius: 0.2rem;
+}
+.trash-btn:hover {
+    color: var(--foreground);
+    background-color: var(--border);
+}
+/* Input and button sizes for settings */
+.input-sm {
+    width: 140px;
+    padding: 0.4rem;
+    font-size: 0.8rem;
+}
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+}
+.chat-settings {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
+}
+/* Chat bubble alignment */
+.message.user {
+    width: 80%;
+    margin-left: auto;
+}
+.message.bot {
+    width: 80%;
+    margin-right: auto;
+}

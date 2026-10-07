@@ -11,6 +11,7 @@ class ChatApp {
         this.newChatBtn = document.getElementById('new-chat-btn');
         // OpenRouter API key - INSERT YOUR KEY HERE
         this.apiKey = ''; // <-- INSERT YOUR OPENROUTER API KEY
+        
         // Model to use (free tier)
         this.model = 'meta-llama/llama-2-7b-chat:free';
         // UI elements for settings
