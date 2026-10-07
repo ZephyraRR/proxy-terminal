@@ -12,8 +12,11 @@ class ChatApp {
         // OpenRouter API key - INSERT YOUR KEY HERE
         this.apiKey = ''; // <-- INSERT YOUR OPENROUTER API KEY
         // Model to use (free tier)
-        this.model = 'mistralai/mistral-7b-instruct:free';
-
+        this.model = 'openchat/openchat-3.5-0106:free';
+        // UI elements for settings
+        this.apiKeyInput = null;
+        this.proxyCountrySelect = null;
+        this.saveSettingsBtn = null;
         this.init();
     }
 
@@ -23,9 +26,13 @@ class ChatApp {
             e.preventDefault();
             this.sendMessage();
         });
-
+        // Settings inputs
+        this.apiKeyInput = document.getElementById('api-key-input');
+        this.proxyCountrySelect = document.getElementById('proxy-country-select');
+        this.saveSettingsBtn = document.getElementById('save-settings-btn');
+        this.saveSettingsBtn.addEventListener('click', () => this.saveSettingsForCurrentChat());
         // Create initial chat
-        this.createChat('Chat 1');
+        this.createChat('New chat');
     }
 
     createChat(name = `New chat`) {
@@ -33,8 +40,8 @@ class ChatApp {
             id: this.nextChatId++,
             name,
             messages: [],
-            done: false,
-            proxy: `proxy${this.nextChatId}`
+            apiKey: '',
+            proxyCountry: ''
         };
         this.chats.push(chat);
         this.switchChat(chat.id);
@@ -46,6 +53,9 @@ class ChatApp {
         this.renderChatList();
         this.renderMessages();
         this.chatInput.focus();
+        // Update settings UI to reflect current chat's values
+        if (this.apiKeyInput) this.apiKeyInput.value = this.getCurrentChat().apiKey || '';
+        if (this.proxyCountrySelect) this.proxyCountrySelect.value = this.getCurrentChat().proxyCountry || '';
     }
 
     renderChatList() {
@@ -55,10 +65,13 @@ class ChatApp {
             div.className = `chat-item${chat.id === this.currentChatId ? ' active' : ''}${chat.done ? ' done' : ''}`;
             div.innerHTML = `
                 <span class="chat-name">${chat.name}</span>
-                <label class="done-label">
-                    <input type="checkbox" ${chat.done ? 'checked' : ''}>
-                    <span>Done</span>
-                </label>
+                <div class="chat-controls">
+                    <label class="done-label">
+                        <input type="checkbox" ${chat.done ? 'checked' : ''}>
+                        Done
+                    </label>
+                    <button class="trash-btn" title="Delete chat">🗑️</button>
+                </div>
             `;
             // Attach event listeners
             const checkbox = div.querySelector('input[type="checkbox"]');
@@ -66,17 +79,14 @@ class ChatApp {
                 this.toggleDone(chat.id);
                 e.stopPropagation(); // prevent triggering switchChat
             });
+            const trashBtn = div.querySelector('.trash-btn');
+            trashBtn.addEventListener('click', (e) => {
+                this.deleteChat(chat.id);
+                e.stopPropagation(); // prevent triggering switchChat
+            });
             div.addEventListener('click', () => this.switchChat(chat.id));
             this.chatList.appendChild(div);
         });
-    }
-
-    toggleDone(chatId) {
-        const chat = this.chats.find(c => c.id === chatId);
-        if (chat) {
-            chat.done = !chat.done;
-            this.renderChatList();
-        }
     }
 
     renderMessages() {
@@ -93,11 +103,43 @@ class ChatApp {
         // Scroll to bottom
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
-
     getCurrentChat() {
         return this.chats.find(c => c.id === this.currentChatId);
     }
 
+    saveSettingsForCurrentChat() {
+        const chat = this.getCurrentChat();
+        if (!chat) return;
+        chat.apiKey = this.apiKeyInput ? this.apiKeyInput.value.trim() : '';
+        chat.proxyCountry = this.proxyCountrySelect ? this.proxyCountrySelect.value.trim() : '';
+        this.appendToTerminal(`[Settings] Saved API key and proxy country for chat ${chat.id}\n`);
+    }
+
+    toggleDone(chatId) {
+        const chat = this.chats.find(c => c.id === chatId);
+        if (chat) {
+            chat.done = !chat.done;
+            this.renderChatList();
+        }
+    }
+
+    deleteChat(chatId) {
+        if (this.chats.length <= 1) {
+            // Prevent deleting the last chat
+            return;
+        }
+        const index = this.chats.findIndex(c => c.id === chatId);
+        if (index !== -1) {
+            this.chats.splice(index, 1);
+            // If deleted chat was current, switch to another
+            if (this.currentChatId === chatId) {
+                const newCurrent = this.chats[Math.min(index, this.chats.length - 1)];
+                this.switchChat(newCurrent.id);
+            }
+            this.renderChatList();
+            this.renderMessages();
+        }
+    }
     async sendMessage() {
         const text = this.chatInput.value.trim();
         if (!text) return;
@@ -116,35 +158,46 @@ class ChatApp {
         this.renderMessages();
         this.chatInput.focus();
 
-        // Show loading indicator in terminal? We'll just start streaming.
-        this.appendToTerminal(`[${chat.proxy}] Sending request to ${this.model}...\n`);
+        // Determine which API key to use
+        const apiKeyToUse = chat.apiKey ? chat.apiKey : this.apiKey;
+        if (!apiKeyToUse) {
+            this.appendToTerminal('[Error] No API key configured. Please set API key in settings.\n\n');
+            chat.messages.push({ text: 'Error: No API key configured', sender: 'bot' });
+            this.renderMessages();
+            return;
+        }
+        // Proxy label for logging
+        const proxyLabel = chat.proxyCountry || 'global';
+
+        // Show loading indicator in terminal
+        this.appendToTerminal(`[${proxyLabel}] Sending request to ${this.model}...\n`);
 
         try {
-            const fullResponse = await this.callAPIStream(text, chat.proxy);
+            const fullResponse = await this.callAPIStream(text, apiKeyToUse, proxyLabel);
             // After stream completes, add final bot message (optional)
             const botMessage = fullResponse.trim() || '(no response)';
             chat.messages.push({ text: botMessage, sender: 'bot' });
             this.renderMessages();
-            this.appendToTerminal(`[${chat.proxy}] Request completed.\n\n`);
+            this.appendToTerminal(`[${proxyLabel}] Request completed.\n\n`);
         } catch (error) {
-            this.appendToTerminal(`[${chat.proxy}] Error: ${error.message}\n\n`);
+            this.appendToTerminal(`[${proxyLabel}] Error: ${error.message}\n\n`);
             chat.messages.push({ text: `Error: ${error.message}`, sender: 'bot' });
             this.renderMessages();
         }
     }
-
     /**
      * Call OpenRouter API with streaming and retry logic.
      * @param {string} prompt 
+     * @param {string} apiKey 
      * @param {string} proxyLabel 
      * @returns {Promise<string>} accumulated response text
      */
-    async callAPIStream(prompt, proxyLabel) {
+    async callAPIStream(prompt, apiKey, proxyLabel) {
         const maxRetries = 2;
         let attempt = 0;
         while (attempt <= maxRetries) {
             try {
-                return await this.fetchStream(prompt, proxyLabel);
+                return await this.fetchStream(prompt, apiKey, proxyLabel);
             } catch (err) {
                 attempt++;
                 if (attempt > maxRetries) throw err;
@@ -160,10 +213,11 @@ class ChatApp {
     /**
      * Perform streaming request to OpenRouter.
      * @param {string} prompt
+     * @param {string} apiKey
      * @param {string} proxyLabel
      * @returns {Promise<string>}
      */
-    async fetchStream(prompt, proxyLabel) {
+    async fetchStream(prompt, apiKey, proxyLabel) {
         const url = 'https://openrouter.ai/api/v1/chat/completions';
         const body = {
             model: this.model,
@@ -176,7 +230,7 @@ class ChatApp {
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${this.apiKey}`,
+                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
                 // Optional: provide referer for openrouter stats
                 'HTTP-Referer': 'https://proxy-terminal.local',
@@ -222,7 +276,8 @@ class ChatApp {
                         if (delta) {
                             accumulated += delta;
                             // Write delta to terminal in real-time
-                            this.appendToTerminal(delta);
+                            this.terminal.value += delta;
+                            this.terminal.scrollTop = this.terminal.scrollHeight;
                         }
                     } catch (e) {
                         // Ignore parsing errors
@@ -241,7 +296,8 @@ class ChatApp {
                         const delta = json.choices?.[0]?.delta?.content;
                         if (delta) {
                             accumulated += delta;
-                            this.appendToTerminal(delta);
+                            this.terminal.value += delta;
+                            this.terminal.scrollTop = this.terminal.scrollHeight;
                         }
                     } catch (e) { /* ignore */ }
                 }
@@ -251,7 +307,7 @@ class ChatApp {
     }
 
     appendToTerminal(text) {
-        this.terminal.value += text + '\n\n';
+        this.terminal.value += text + '\\n\\n';
         this.terminal.scrollTop = this.terminal.scrollHeight;
     }
 }
