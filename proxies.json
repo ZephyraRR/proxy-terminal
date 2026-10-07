@@ -1,0 +1,14 @@
+[
+  {
+    "API": "example1.com",
+    "PROXY": "proxy1.example.com:8080"
+  },
+  {
+    "API": "example2.org",
+    "PROXY": "proxy2.example.org:3128"
+  },
+  {
+    "API": "api.example.net",
+    "PROXY": "proxy3.example.net:80"
+  }
+]
