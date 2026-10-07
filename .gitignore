@@ -4,3 +4,5 @@ node_modules/
 cline-tools/
 config.local.json
 docker/cline-tools/
+.wrangler/
+test/fake.log
