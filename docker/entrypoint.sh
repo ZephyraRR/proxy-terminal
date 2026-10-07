@@ -10,5 +10,6 @@ if [ -n "$BASE_URL" ]; then
     fs.writeFileSync(f, JSON.stringify(d, null, 2));'
 fi
 unset API_KEY
-tmux new-session -d -s main -x 200 -y 50 'cline -i -P openrouter; echo; echo "[cline exited]"; exec bash'
+export OPENROUTER_BASE="${BASE_URL:-}"
+tmux new-session -d -s main -x 200 -y 50 'cline-auto -i -P openrouter; echo; echo "[cline exited]"; exec bash'
 exec ttyd -W -p 7681 -t fontSize=14 -t 'theme={"background":"#1e1e1e"}' tmux attach -t main

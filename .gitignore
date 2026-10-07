@@ -1,3 +1,6 @@
 state.json
 workspaces/
 node_modules/
+cline-tools/
+config.local.json
+docker/cline-tools/

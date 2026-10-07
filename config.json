@@ -1,10 +1,8 @@
 {
   "image": "proxy-terminal-cline",
   "model": "cohere/north-mini-code:free",
-  "workers": {
-    "Default": "",
-    "United States": "",
-    "Germany": "",
-    "Japan": ""
-  }
+  "profiles": [
+    { "name": "Account 1", "apiKey": "", "worker": "" },
+    { "name": "Account 2", "apiKey": "", "worker": "" }
+  ]
 }

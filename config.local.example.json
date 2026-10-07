@@ -1,0 +1,6 @@
+{
+  "profiles": [
+    { "name": "Account 1", "apiKey": "sk-or-v1-...", "worker": "https://proxy-terminal-1.YOUR-SUBDOMAIN.workers.dev/api/v1" },
+    { "name": "Account 2", "apiKey": "sk-or-v1-...", "worker": "https://proxy-terminal-2.YOUR-SUBDOMAIN.workers.dev/api/v1" }
+  ]
+}

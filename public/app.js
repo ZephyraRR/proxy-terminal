@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let chats = [], countries = [], current = null, shownPort = null, editing = false;
+let chats = [], profiles = [], current = null, shownPort = null, editing = false;
 
 async function call(method, url, body) {
     const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -11,9 +11,9 @@ const cur = () => chats.find((c) => c.id === current);
 async function refresh() {
     const data = await call('GET', '/api/chats');
     chats = data.chats;
-    if (!countries.length) {
-        countries = data.countries;
-        $('proxy-country-select').innerHTML = countries.map((c) => `<option>${esc(c)}</option>`).join('');
+    if (!profiles.length) {
+        profiles = data.profiles;
+        $('profile-select').innerHTML = profiles.map((c) => `<option>${esc(c)}</option>`).join('');
     }
     if (!cur()) {
         if (!chats.length) chats.push(await call('POST', '/api/chats'));
@@ -63,16 +63,16 @@ function render() {
             : 'Send a message: a new container with its own Cline starts here.';
     }
     if (!editing) {
-        $('api-key-input').placeholder = chat.hasKey ? 'API key saved (type to replace)' : 'OpenRouter API key';
+        $('api-key-input').placeholder = chat.hasKey ? 'API key saved (type to replace)' : 'API key (optional, profile has one)';
         $('api-key-input').value = '';
-        $('proxy-country-select').value = chat.country;
+        $('profile-select').value = chat.profile;
         $('model-input').value = chat.model || '';
     }
 }
 
-['api-key-input', 'proxy-country-select', 'model-input'].forEach((id) => $(id).addEventListener('input', () => { editing = true; }));
+['api-key-input', 'profile-select', 'model-input'].forEach((id) => $(id).addEventListener('input', () => { editing = true; }));
 $('save-settings-btn').addEventListener('click', async () => {
-    await call('PUT', `/api/chats/${current}/settings`, { apiKey: $('api-key-input').value, country: $('proxy-country-select').value, model: $('model-input').value });
+    await call('PUT', `/api/chats/${current}/settings`, { apiKey: $('api-key-input').value, profile: $('profile-select').value, model: $('model-input').value });
     editing = false;
     refresh();
 });

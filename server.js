@@ -1,7 +1,7 @@
 // proxy-terminal backend (no dependencies, needs Docker).
 // Every chat gets its own container: isolated Cline (+ `cline auth` with that chat's API key) behind ttyd/tmux.
 // Messages sent in the chat are typed into that container's Cline. Traffic to OpenRouter goes through a
-// Cloudflare Worker (config.json -> workers[country]) via Cline's base URL.
+// Cloudflare Worker of the chat's profile (config.json / config.local.json) via Cline's base URL.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -13,7 +13,10 @@ const ROOT = __dirname;
 const STATE_FILE = path.join(ROOT, 'state.json');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
 
-const config = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
+// config.json (committed, placeholders) + config.local.json (git-ignored: your real keys and Worker URLs; wins)
+const readJson = (f) => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, f), 'utf8')); } catch { return {}; } };
+const config = () => ({ ...readJson('config.json'), ...readJson('config.local.json') });
+const profileOf = (chat) => (config().profiles || []).find((p) => p.name === chat.profile) || {};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const docker = (...args) => new Promise((resolve, reject) =>
     execFile('docker', args, { maxBuffer: 8 << 20 }, (err, out, errout) =>
@@ -25,7 +28,7 @@ try { state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { /* firs
 const save = () => fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 1));
 const find = (id) => state.chats.find((c) => c.id === +id);
 const cname = (c) => `proxy-terminal-${c.id}`;
-const publicChat = ({ apiKey, ...c }) => ({ ...c, hasKey: !!apiKey });
+const publicChat = ({ apiKey, ...c }) => ({ ...c, hasKey: !!(apiKey || profileOf(c).apiKey) });
 
 // ---- containers ----------------------------------------------------------------------------------------------
 const pane = (chat) => docker('exec', cname(chat), 'tmux', 'capture-pane', '-p', '-t', 'main');
@@ -49,16 +52,18 @@ async function type(chat, text) {
 
 async function ensureContainer(chat) {
     if (chat.status === 'running' && chat.port) return;
-    if (!chat.apiKey) throw new Error('No API key set for this chat (Save Settings first).');
     const cfg = config();
-    const base = cfg.workers[chat.country] || cfg.workers.Default || '';
+    const profile = profileOf(chat);
+    const apiKey = chat.apiKey || profile.apiKey;
+    if (!apiKey) throw new Error('No API key: pick a profile that has one in config.local.json, or paste a key and Save Settings.');
+    const base = profile.worker || '';
     chat.status = 'starting'; chat.port = null; save();
     await docker('rm', '-f', cname(chat)).catch(() => {});
     const ws = path.join(ROOT, 'workspaces', String(chat.id));
     fs.mkdirSync(ws, { recursive: true });
     await docker('run', '-d', '--name', cname(chat), '--label', 'proxy-terminal=1',
         '-p', '127.0.0.1::7681', '-v', `${ws}:/workspace`,
-        '-e', `API_KEY=${chat.apiKey}`, '-e', `MODEL=${chat.model || cfg.model || ''}`, '-e', `BASE_URL=${base}`,
+        '-e', `API_KEY=${apiKey}`, '-e', `MODEL=${chat.model || cfg.model || ''}`, '-e', `BASE_URL=${base}`,
         cfg.image);
     const mapped = await docker('port', cname(chat), '7681/tcp');
     chat.port = +mapped.split('\n')[0].split(':').pop();
@@ -103,9 +108,9 @@ async function api(req, res, url) {
     if (!m) return json(res, 404, { error: 'not found' });
     const [, id, action] = m;
     if (!id) {
-        if (req.method === 'GET') return json(res, 200, { chats: state.chats.map(publicChat), countries: Object.keys(config().workers) });
+        if (req.method === 'GET') return json(res, 200, { chats: state.chats.map(publicChat), profiles: (config().profiles || []).map((p) => p.name) });
         if (req.method === 'POST') {
-            const chat = { id: state.next++, name: 'New chat', apiKey: '', country: 'Default', model: '', status: 'stopped', port: null, messages: [], done: false };
+            const chat = { id: state.next++, name: 'New chat', apiKey: '', profile: ((config().profiles || [])[0] || {}).name || '', model: '', status: 'stopped', port: null, messages: [], done: false };
             state.chats.push(chat); save();
             return json(res, 200, publicChat(chat));
         }
@@ -121,7 +126,7 @@ async function api(req, res, url) {
     const body = await readBody(req);
     if (action === 'settings') {
         if (typeof body.apiKey === 'string' && body.apiKey) chat.apiKey = body.apiKey.trim();
-        if (typeof body.country === 'string') chat.country = body.country;
+        if (typeof body.profile === 'string') chat.profile = body.profile;
         if (typeof body.model === 'string') chat.model = body.model.trim();
         save();
         return json(res, 200, publicChat(chat));
