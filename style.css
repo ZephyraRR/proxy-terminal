@@ -202,6 +202,24 @@ body.dark {
     color: var(--background);
 }
 
+/* Done state styling */
+.chat-sidebar .chat-item.done .chat-name {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+.chat-sidebar .chat-item.done label {
+    opacity: 0.4;
+}
+.chat-sidebar .chat-item label {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+.chat-sidebar .chat-item label input {
+    margin-right: 0.25rem;
+}
 /* Dark mode adjustments for the body if not using .dark class */
 body:not(.dark) {
     /* light mode if needed, but we are only dark */
