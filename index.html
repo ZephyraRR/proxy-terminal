@@ -6,25 +6,24 @@
     <title>Proxy Terminal Chat</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="dark">
     <div class="container">
         <div class="left-pane">
-            <h2>Terminal</h2>
             <textarea id="terminal" readonly placeholder="API responses will appear here..."></textarea>
         </div>
         <div class="right-pane">
             <div class="chat-header">
                 <h2>Chats</h2>
-                <button id="new-chat-btn">New Chat</button>
+                <button id="new-chat-btn" class="btn btn-primary">New Chat</button>
             </div>
             <div class="chat-sidebar">
                 <div id="chat-list"></div>
             </div>
             <div class="chat-area">
                 <div id="chat-messages"></div>
-                <form id="chat-form">
-                    <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" />
-                    <button type="submit">Send</button>
+                <form id="chat-form" class="flex">
+                    <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" class="input" />
+                    <button type="submit" class="btn btn-primary">Send</button>
                 </form>
             </div>
         </div>
