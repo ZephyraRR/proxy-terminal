@@ -12,14 +12,9 @@ class ChatApp {
         // OpenRouter API key - INSERT YOUR KEY HERE
         this.apiKey = ''; // <-- INSERT YOUR OPENROUTER API KEY
         
-        // List of fallback models (free tier)
-        this.models = [
-            'meta-llama/llama-2-7b-chat:free',
-            'huggingfaceh4/zephyr-7b-beta:free',
-            'mistralai/mistral-7b-instruct:free'
-        ];
+        // Models (free tier). Only the selected one is used; no automatic fallback.
+        this.models = ['meta-llama/llama-2-7b-chat:free'];
         this.currentModelIndex = 0;
-        // Keep a reference to the current model for logging
         this.model = this.models[this.currentModelIndex];
         // UI elements for settings
         this.apiKeyInput = null;
@@ -120,7 +115,7 @@ class ChatApp {
         if (!chat) return;
         chat.apiKey = this.apiKeyInput ? this.apiKeyInput.value.trim() : '';
         chat.proxyCountry = this.proxyCountrySelect ? this.proxyCountrySelect.value.trim() : '';
-        this.appendToTerminal(`[Settings] Saved API key and proxy country for chat ${chat.id}\n`);
+        this.appendToTerminal(`[Settings] Saved API key and proxy country for chat ${chat.id}`);
     }
 
     toggleDone(chatId) {
@@ -169,7 +164,7 @@ class ChatApp {
         // Determine which API key to use
         const apiKeyToUse = chat.apiKey ? chat.apiKey : this.apiKey;
         if (!apiKeyToUse) {
-            this.appendToTerminal('[Error] No API key configured. Please set API key in settings.\n\n');
+            this.appendToTerminal('[Error] No API key configured. Please set API key in settings.');
             chat.messages.push({ text: 'Error: No API key configured', sender: 'bot' });
             this.renderMessages();
             return;
@@ -178,34 +173,19 @@ class ChatApp {
         const proxyLabel = chat.proxyCountry || 'global';
 
         // Show loading indicator in terminal
-        this.appendToTerminal(`[${proxyLabel}] Sending request to ${this.model}...\n`);
+        this.appendToTerminal(`[${proxyLabel}] Sending request to ${this.model}...`);
 
-        // Model fallback loop
-        let modelIndex = this.currentModelIndex;
-        let lastError = null;
-        while (modelIndex < this.models.length) {
-            this.model = this.models[modelIndex];
-            this.appendToTerminal(`[${proxyLabel}] Trying model: ${this.model}\n`);
-
-            try {
-                const fullResponse = await this.callAPIStream(text, apiKeyToUse, proxyLabel);
-                // Success
-                const botMessage = fullResponse.trim() || '(no response)';
-                chat.messages.push({ text: botMessage, sender: 'bot' });
-                this.renderMessages();
-                this.appendToTerminal(`[${proxyLabel}] Request completed.\n\n`);
-                // Update current model index for next time
-                this.currentModelIndex = modelIndex + 1;
-                break; // exit while loop
-            } catch (error) {
-                lastError = error;
-                modelIndex++;
-            }
-        }
-        // If all models failed
-        if (modelIndex >= this.models.length) {
-            this.appendToTerminal(`[${proxyLabel}] Error: ${lastError ? lastError.message : 'All models failed'}\n\n`);
-            chat.messages.push({ text: `Error: ${lastError ? lastError.message : 'All models failed'}`, sender: 'bot' });
+        try {
+            const fullResponse = await this.callAPIStream(text, apiKeyToUse, proxyLabel, chat.proxyCountry);
+            const botMessage = fullResponse.trim() || '(no response)';
+            chat.messages.push({ text: botMessage, sender: 'bot' });
+            this.renderMessages();
+            this.appendToTerminal(`
+[${proxyLabel}] Request completed.
+`);
+        } catch (error) {
+            this.appendToTerminal(`[${proxyLabel}] Error: ${error.message}`);
+            chat.messages.push({ text: `Error: ${error.message}`, sender: 'bot' });
             this.renderMessages();
         }
     }
@@ -216,18 +196,18 @@ class ChatApp {
      * @param {string} proxyLabel 
      * @returns {Promise<string>} accumulated response text
      */
-    async callAPIStream(prompt, apiKey, proxyLabel) {
+    async callAPIStream(prompt, apiKey, proxyLabel, proxyCountry) {
         const maxRetries = 2;
         let attempt = 0;
         while (attempt <= maxRetries) {
             try {
-                return await this.fetchStream(prompt, apiKey, proxyLabel);
+                return await this.fetchStream(prompt, apiKey, proxyLabel, proxyCountry);
             } catch (err) {
                 attempt++;
                 if (attempt > maxRetries) throw err;
                 // wait a bit before retry
                 await new Promise(res => setTimeout(res, 500 * attempt));
-                this.appendToTerminal(`[${proxyLabel}] Retry ${attempt}/${maxRetries} after error: ${err.message}\n`);
+                this.appendToTerminal(`[${proxyLabel}] Retry ${attempt}/${maxRetries} after error: ${err.message}`);
             }
         }
         // Should not reach here
@@ -241,8 +221,9 @@ class ChatApp {
      * @param {string} proxyLabel
      * @returns {Promise<string>}
      */
-    async fetchStream(prompt, apiKey, proxyLabel) {
-        const url = 'https://openrouter.ai/api/v1/chat/completions';
+    async fetchStream(prompt, apiKey, proxyLabel, proxyCountry) {
+        // Same-origin backend (server.js) relays to OpenRouter through the chat's proxy
+        const url = '/api/chat';
         const body = {
             model: this.model,
             messages: [{ role: 'user', content: prompt }],
@@ -256,9 +237,7 @@ class ChatApp {
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
-                // Optional: provide referer for openrouter stats
-                'HTTP-Referer': 'https://proxy-terminal.local',
-                'X-Title': 'Proxy Terminal Chat'
+                'X-Proxy-Country': proxyCountry || ''
             },
             body: JSON.stringify(body)
         });
@@ -331,7 +310,7 @@ class ChatApp {
     }
 
     appendToTerminal(text) {
-        this.terminal.value += text + '\\n\\n';
+        this.terminal.value += text.replace(/\n+$/, '') + '\n';
         this.terminal.scrollTop = this.terminal.scrollHeight;
     }
 }
