@@ -12,7 +12,7 @@ class ChatApp {
         // OpenRouter API key - INSERT YOUR KEY HERE
         this.apiKey = ''; // <-- INSERT YOUR OPENROUTER API KEY
         // Model to use (free tier)
-        this.model = 'google/gemma-7b-it:free';
+        this.model = 'huggingfaceh4/zephyr-7b-beta:free';
         // UI elements for settings
         this.apiKeyInput = null;
         this.proxyCountrySelect = null;
