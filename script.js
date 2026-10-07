@@ -12,8 +12,15 @@ class ChatApp {
         // OpenRouter API key - INSERT YOUR KEY HERE
         this.apiKey = ''; // <-- INSERT YOUR OPENROUTER API KEY
         
-        // Model to use (free tier)
-        this.model = 'meta-llama/llama-2-7b-chat:free';
+        // List of fallback models (free tier)
+        this.models = [
+            'meta-llama/llama-2-7b-chat:free',
+            'huggingfaceh4/zephyr-7b-beta:free',
+            'mistralai/mistral-7b-instruct:free'
+        ];
+        this.currentModelIndex = 0;
+        // Keep a reference to the current model for logging
+        this.model = this.models[this.currentModelIndex];
         // UI elements for settings
         this.apiKeyInput = null;
         this.proxyCountrySelect = null;
@@ -173,16 +180,32 @@ class ChatApp {
         // Show loading indicator in terminal
         this.appendToTerminal(`[${proxyLabel}] Sending request to ${this.model}...\n`);
 
-        try {
-            const fullResponse = await this.callAPIStream(text, apiKeyToUse, proxyLabel);
-            // After stream completes, add final bot message (optional)
-            const botMessage = fullResponse.trim() || '(no response)';
-            chat.messages.push({ text: botMessage, sender: 'bot' });
-            this.renderMessages();
-            this.appendToTerminal(`[${proxyLabel}] Request completed.\n\n`);
-        } catch (error) {
-            this.appendToTerminal(`[${proxyLabel}] Error: ${error.message}\n\n`);
-            chat.messages.push({ text: `Error: ${error.message}`, sender: 'bot' });
+        // Model fallback loop
+        let modelIndex = this.currentModelIndex;
+        let lastError = null;
+        while (modelIndex < this.models.length) {
+            this.model = this.models[modelIndex];
+            this.appendToTerminal(`[${proxyLabel}] Trying model: ${this.model}\n`);
+
+            try {
+                const fullResponse = await this.callAPIStream(text, apiKeyToUse, proxyLabel);
+                // Success
+                const botMessage = fullResponse.trim() || '(no response)';
+                chat.messages.push({ text: botMessage, sender: 'bot' });
+                this.renderMessages();
+                this.appendToTerminal(`[${proxyLabel}] Request completed.\n\n`);
+                // Update current model index for next time
+                this.currentModelIndex = modelIndex + 1;
+                break; // exit while loop
+            } catch (error) {
+                lastError = error;
+                modelIndex++;
+            }
+        }
+        // If all models failed
+        if (modelIndex >= this.models.length) {
+            this.appendToTerminal(`[${proxyLabel}] Error: ${lastError ? lastError.message : 'All models failed'}\n\n`);
+            chat.messages.push({ text: `Error: ${lastError ? lastError.message : 'All models failed'}`, sender: 'bot' });
             this.renderMessages();
         }
     }
