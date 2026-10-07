@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proxy Terminal Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="left-pane">
+            <h2>Terminal</h2>
+            <textarea id="terminal" readonly placeholder="API responses will appear here..."></textarea>
+        </div>
+        <div class="right-pane">
+            <div class="chat-header">
+                <h2>Chats</h2>
+                <button id="new-chat-btn">New Chat</button>
+            </div>
+            <div class="chat-sidebar">
+                <div id="chat-list"></div>
+            </div>
+            <div class="chat-area">
+                <div id="chat-messages"></div>
+                <form id="chat-form">
+                    <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" />
+                    <button type="submit">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
