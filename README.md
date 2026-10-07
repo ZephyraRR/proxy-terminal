@@ -1,24 +1,35 @@
 # proxy-terminal
 
-Chat UI (left: raw API terminal, right: chats) for OpenRouter with a per-chat API key and proxy country.
+Chat UI where every chat is its own sandbox: you send a message, a **new Docker container** starts with its own
+Cline (own state, own `cline auth` with that chat's OpenRouter key), the terminal opens on the left, and your
+message is typed into it. Follow-up messages are typed into the same Cline. Other Cline windows on your machine
+are never touched.
 
-## Run
+```
+browser ── localhost:3100 ──> server.js ── docker run ──> container per chat
+   │                                                       ├ cline auth -p openrouter -k <chat key>
+   └ iframe localhost:<random port> ── ttyd ── tmux ───────┴ cline -i   ──> Cloudflare Worker ──> openrouter.ai
+```
 
-    node server.js            # http://127.0.0.1:3000
+## Setup
 
-or in a container:
+1. Build the image (once): `docker build -t proxy-terminal-cline docker`
+2. Deploy the proxy (optional, but this is the "proxy" part): `cd worker && npx wrangler deploy`
+   then put `https://<name>.<account>.workers.dev/api/v1` into `config.json` under `workers`
+   (`Default`, or one entry per country/Worker you want in the dropdown). Empty = direct to OpenRouter.
+3. `node server.js` and open http://127.0.0.1:3100
 
-    docker build -t proxy-terminal . && docker run --rm -p 3000:3000 proxy-terminal
+Per chat you set the API key, the proxy entry and (optionally) the model. `config.json` has the default model,
+used because `cline auth` requires one.
 
-The browser talks only to `/api/chat`; `server.js` relays the streamed response to OpenRouter.
-If the chat has a proxy country, the request goes through the HTTP proxy listed for it in `proxies.json`
-(`"host:port"` or `"user:pass@host:port"`, empty = direct).
+## Behaviour
 
-## Model
-
-One model is used (`this.models[0]` in `script.js`), with no automatic fallback.
-
-## Not included
-
-Integration with `cline-auto` is not implemented: it is an interactive Windows PTY wrapper around the Cline CLI,
-not a request/response service, so it cannot be driven through this API.
+- Container lifecycle: starts on the first message, removed on **Done** or delete. Files Cline creates live in
+  `workspaces/<chat id>` on the host.
+- Like `cline-auto`: if Cline sits on a "Network error" with an unchanged screen, the server types `Continue`.
+- Containers publish their terminal only on `127.0.0.1`. The API key is passed to the container as an env var
+  and stored in `state.json` (git-ignored) on your machine.
+- `cline auth -b` only accepts OpenAI providers, so the entrypoint writes the Worker URL into the OpenRouter
+  provider's `baseUrl` in Cline's settings.
+- The Worker is a plain reverse proxy to openrouter.ai; set a `PROXY_TOKEN` secret if you want to lock it down
+  (then Cline would also need to send that header, which is not wired up yet).

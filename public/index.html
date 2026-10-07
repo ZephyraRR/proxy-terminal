@@ -3,37 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Proxy Terminal Chat</title>
+    <title>Proxy Terminal</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="dark">
     <div class="container">
         <div class="left-pane">
-            <textarea id="terminal" readonly placeholder="API responses will appear here..."></textarea>
+            <div id="terminal-placeholder">Send a message: a new container with its own Cline starts here.</div>
+            <iframe id="terminal" title="Cline terminal" hidden></iframe>
         </div>
         <div class="right-pane">
             <div class="chat-header">
                 <h2>Chats</h2>
                 <div class="chat-settings">
-                    <input type="password" id="api-key-input" placeholder="API Key" class="input input-sm" />
-                    <select id="proxy-country-select" class="input input-sm">
-                        <option value="">Select Proxy Country</option>
-                        <option value="United States">United States</option>
-                        <option value="United Kingdom">United Kingdom</option>
-                        <option value="Canada">Canada</option>
-                        <option value="Germany">Germany</option>
-                        <option value="France">France</option>
-                        <option value="Japan">Japan</option>
-                        <option value="Australia">Australia</option>
-                    </select>
+                    <input type="password" id="api-key-input" placeholder="OpenRouter API key" class="input input-sm" />
+                    <select id="proxy-country-select" class="input input-sm"></select>
+                    <input type="text" id="model-input" placeholder="Model (optional)" class="input input-sm" />
                     <button id="save-settings-btn" class="btn btn-sm">Save Settings</button>
                 </div>
                 <button id="new-chat-btn" class="btn btn-primary">New Chat</button>
             </div>
-            <div class="chat-sidebar">
-                <div id="chat-list"></div>
-            </div>
+            <div class="chat-sidebar"><div id="chat-list"></div></div>
             <div class="chat-area">
+                <div id="chat-status"></div>
                 <div id="chat-messages"></div>
                 <form id="chat-form" class="flex">
                     <input type="text" id="chat-input" placeholder="Type a message..." autocomplete="off" class="input" />
@@ -42,6 +34,6 @@
             </div>
         </div>
     </div>
-    <script src="script.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

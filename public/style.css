@@ -287,3 +287,6 @@ body:not(.dark) {
     width: 80%;
     margin-right: auto;
 }
+#terminal { border: 0; padding: 0; }
+#terminal-placeholder { color: #888; margin: auto; text-align: center; }
+#chat-status { font-size: 0.75rem; color: #888; padding: 0.25rem 0.5rem; }

@@ -1,0 +1,10 @@
+{
+  "image": "proxy-terminal-cline",
+  "model": "cohere/north-mini-code:free",
+  "workers": {
+    "Default": "",
+    "United States": "",
+    "Germany": "",
+    "Japan": ""
+  }
+}
